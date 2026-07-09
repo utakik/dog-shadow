@@ -64,3 +64,12 @@ Required packages:
 - `opencv-python`
 - `mediapipe`
 - `numpy`
+
+## Mac動作確認環境
+
+- macOS
+- Python 3.11.15
+- mediapipe 0.10.14
+- OpenCV camera index: 0
+- mode_png_puppet 起動確認済み
+- mode_skeleton_pixel 起動確認済み
