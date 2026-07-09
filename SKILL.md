@@ -125,3 +125,12 @@ Mouth opening uses normalized XY distance between `MIDDLE_FINGER_TIP` and `PINKY
 - Keep `head.png` and `jaw.png` as separate layers in PNG Puppet Mode.
 - Preserve mirror input behavior for live playability.
 - Prefer small, reversible changes and run Python syntax checks after script edits.
+
+## Mac動作確認環境
+
+- macOS
+- Python 3.11.15
+- mediapipe 0.10.14
+- OpenCV camera index: 0
+- mode_png_puppet 起動確認済み
+- mode_skeleton_pixel 起動確認済み
