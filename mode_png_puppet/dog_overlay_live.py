@@ -168,13 +168,15 @@ def main():
 
     global show_landmarks
 
-    # --- PNG 読み込み（スクリプト位置基準） ---
+    # --- PNG 読み込み（mode_png_puppet/assets 基準） ---
 
     base_dir = Path(__file__).resolve().parent
 
-    head_path = base_dir / "head.png"
+    asset_dir = base_dir / "assets"
 
-    jaw_path = base_dir / "jaw.png"
+    head_path = asset_dir / "head.png"
+
+    jaw_path = asset_dir / "jaw.png"
 
     print("head_path:", head_path)
 

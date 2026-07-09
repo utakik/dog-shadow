@@ -1,67 +1,90 @@
-# Hand Dog Shadow Skill
+---
+name: hand-dog-shadow
+description: Work on the Hand Dog Shadow repository, a two-mode OpenCV and MediaPipe hand-tracking experiment. Use when Codex needs to run, reorganize, preserve, or extend the PNG dog-head puppet mode or the PNG-free skeleton/mask/pixel visual mode, especially while preserving mouth calibration values and keeping the two modes separate.
+---
 
-Hand tracking input controls a dog-shadow / dog-head visual effect using MediaPipe Hands, OpenCV, and two transparent PNG parts: `head.png` and `jaw.png`.
+# Hand Dog Shadow
 
-Origin: hand-recognition experiment for making a dog-like form appear from finger motion. This repository currently contains an experimental working snapshot with 2 PNG assets for the head and jaw.
+Use this skill for the Hand Dog Shadow repository: a live camera experiment that turns hand motion into dog-shadow-like visuals with OpenCV, MediaPipe Hands, and NumPy.
 
-## When to use
+## Repository Layout
 
-Use this skill when:
+```text
+dog-shadow/
+├─ SKILL.md
+├─ README.md
+├─ requirements.txt
+├─ mode_png_puppet/
+│  ├─ dog_overlay_live.py
+│  └─ assets/
+│     ├─ head.png
+│     └─ jaw.png
+└─ mode_skeleton_pixel/
+   └─ dog_overlay_live_v0_6_stable.py
+```
 
-- You want to control a dog head, dog shadow, or jaw animation from a live hand camera feed.
-- You want to restart the earlier hand-recognition / dog-form experiment.
-- You need a compact OpenCV + MediaPipe prototype that maps hand landmarks to image rotation, flip, scale, and mouth opening.
-- You want to develop the experiment toward glove monitors, shadow play, rough pixel-dog rendering, or body-driven visual puppets.
+## Modes
 
-## Core idea
+### PNG Puppet Mode
 
-The hand is not classified as a gesture first. Instead, selected hand landmarks become continuous control signals:
+Use `mode_png_puppet/dog_overlay_live.py` when the user wants the dog-head puppet controlled by hand motion.
 
-- hand direction -> dog head direction
-- finger spread / z-depth -> jaw opening
-- hand scale -> dog scale
-- left/right finger direction -> horizontal flip
-- smoothed motion -> less jittery puppet movement
+This mode:
 
-The important point is that the dog shape is generated as an effect of bodily motion, not as a fixed character animation.
+- loads `mode_png_puppet/assets/head.png`
+- loads `mode_png_puppet/assets/jaw.png`
+- detects one hand with MediaPipe Hands
+- maps landmarks to head angle, horizontal flip, scale, and jaw opening
+- overlays the two RGBA PNG layers on the mirrored camera feed
 
-## Current working version
+Run it with:
 
-The current working snapshot uses:
+```bash
+python3 mode_png_puppet/dog_overlay_live.py
+```
 
-- Python
-- OpenCV
-- MediaPipe Hands
-- NumPy
-- two PNG assets:
-  - `head.png`
-  - `jaw.png`
+Controls:
 
-The main method reads camera input, detects one hand, extracts landmarks, then overlays the dog head and jaw as RGBA images on the live frame.
+- `l`: toggle landmark display
+- `c`: switch camera when multiple cameras are detected
+- `q`: quit
 
-## Landmark mapping
+### Skeleton Pixel Mode
 
-Current mapping:
+Use `mode_skeleton_pixel/dog_overlay_live_v0_6_stable.py` when the user wants the PNG-free hand-mask, contour, and pixelization expression path.
 
-- `WRIST` -> hand scale reference
-- `MIDDLE_FINGER_MCP` -> direction base
-- `MIDDLE_FINGER_TIP` -> direction tip and mouth control
-- `PINKY_TIP` -> mouth control with middle fingertip
-- `RING_FINGER_MCP` -> dog placement center
+This mode:
 
-Mouth opening is based on:
+- does not load `head.png` or `jaw.png`
+- builds a hand mask from MediaPipe landmarks
+- exposes `thr`, `smooth`, `close`, and `grid` trackbars
+- draws contours and pixelizes the detected hand region
 
-- normalized XY distance between `MIDDLE_FINGER_TIP` and `PINKY_TIP`
-- z-depth difference between the same points
-- scale normalization using `WRIST` to `MIDDLE_FINGER_TIP`
+Run it with:
 
-## Parameters to preserve
+```bash
+python3 mode_skeleton_pixel/dog_overlay_live_v0_6_stable.py
+```
 
-These values are important calibration points and should not be casually reset:
+Controls:
+
+- `thr`, `smooth`, `close`, `grid`: visual tuning trackbars
+- `q` or `Esc`: quit
+
+Keep this mode separate from PNG Puppet Mode. It is a candidate for the main visual direction and should not be folded into the PNG pipeline by default.
+
+## Parameters To Preserve
+
+In PNG Puppet Mode, preserve these mouth calibration values unless the user explicitly asks for recalibration:
 
 ```python
 CLOSED_RATIO = 0.29
 OPEN_RATIO = 0.36
+```
+
+Other current puppet parameters:
+
+```python
 MAX_JAW_ANGLE_DEG = 30
 DOG_SIZE_SCALE = 1.28
 DOG_ANGLE_OFFSET_DEG = 0.0
@@ -74,85 +97,31 @@ DX_DEADZONE = 0.03
 JAW_SMOOTH = 0.4
 ```
 
-Known visual contour note from the broader project:
+Known skeleton/pixel observation from earlier exploration:
 
 ```text
 Best hand-contour-looking parameter observed earlier: thr=0, smooth=112.
 ```
 
-Keep this as an observation, not necessarily as a hard dependency for this version.
+Treat this as a useful observation, not as a hard requirement.
 
-## How it works
+## Landmark Mapping For PNG Puppet Mode
 
-1. Detect available cameras.
-2. Open a 640x480 camera stream.
-3. Flip the input horizontally for mirror-like interaction.
-4. Run MediaPipe Hands with one hand.
-5. Extract hand landmarks.
-6. Compute a mouth-opening ratio.
-7. Smooth jaw motion.
-8. Compute left/right direction and horizontal flip.
-9. Compute dog head tilt from the middle finger direction.
-10. Compute scale from hand length.
-11. Overlay `head.png` and `jaw.png` with RGBA alpha blending.
-12. Display ratio, FPS, and optional hand landmarks.
+Current mapping:
 
-## Hard-won lessons
+- `WRIST`: scale reference
+- `MIDDLE_FINGER_MCP`: direction base
+- `MIDDLE_FINGER_TIP`: direction tip and mouth control
+- `PINKY_TIP`: mouth control with middle fingertip
+- `RING_FINGER_MCP`: dog placement center
 
-- Do not turn the hand into discrete gestures too early. Continuous ratios are more useful for this experiment.
-- Preserve the mouth calibration thresholds. Small changes make the dog feel dead or too nervous.
-- `MIDDLE_FINGER_TIP` and `PINKY_TIP` work as a simple mouth-control pair because their XY spread and Z difference both contribute to expression.
-- The dog should follow the hand, but not exactly. Smoothing creates puppet-like delay.
-- Keep `head.png` and `jaw.png` as separate layers. A single image loses the mouth mechanism.
-- Mirror input is important for playability. Without it, the body-image relation becomes confusing.
+Mouth opening uses normalized XY distance between `MIDDLE_FINGER_TIP` and `PINKY_TIP`, their z-depth difference, and scale normalization using `WRIST` to `MIDDLE_FINGER_TIP`.
 
-## Repository organization target
+## Development Rules
 
-Recommended cleanup target:
-
-```text
-dog-shadow/
-├─ SKILL.md
-├─ README.md
-├─ src/
-│  └─ dog_overlay_live.py
-├─ assets/
-│  └─ jaw/
-│     ├─ head.png
-│     └─ jaw.png
-├─ examples/
-├─ notes/
-└─ archive/
-```
-
-The current repository may still contain an older snapshot folder. Do not reorganize aggressively until the working script and PNG paths are confirmed.
-
-## Development directions
-
-Possible next steps:
-
-- split the current working script into `src/dog_overlay_live.py`
-- move PNG files into `assets/jaw/`
-- add a small calibration screen for `CLOSED_RATIO` and `OPEN_RATIO`
-- add recording output for demo videos
-- add a pixel-dog / low-resolution rendering mode
-- add an AI HAT / Raspberry Pi camera variant
-- merge with `ai-hat-vision` only at the interface level, not by mixing repositories too early
-
-## How to ask an AI to use this skill
-
-Use a prompt like:
-
-```text
-Use the Hand Dog Shadow Skill in this repository. Read SKILL.md first. The goal is to restart the hand-tracking dog-shadow experiment, preserve the current mouth thresholds, and make the existing working version easier to run without breaking the PNG asset paths.
-```
-
-## Improving this skill
-
-After each session, append:
-
-- what camera/environment was used
-- what hand landmarks worked or failed
-- which parameters changed
-- what the dog felt like visually
-- which script and asset paths are currently canonical
+- Keep the two modes separate unless the user explicitly asks for a shared interface.
+- Do not make Skeleton Pixel Mode depend on PNG assets.
+- Do not reset `CLOSED_RATIO = 0.29` or `OPEN_RATIO = 0.36` casually.
+- Keep `head.png` and `jaw.png` as separate layers in PNG Puppet Mode.
+- Preserve mirror input behavior for live playability.
+- Prefer small, reversible changes and run Python syntax checks after script edits.
