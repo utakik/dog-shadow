@@ -27,3 +27,8 @@ mode_embroidery_dog/
 ├─ embroidery_pixel_flow.py
 └─ embroidery_line_flow.py
 
+正式ソース素材:
+
+- 手動切り抜き済みの背景透明PNG `mode_embroidery_dog/assets/source/trace_sox_dog.png` を、今後の刺繍犬の本命ソース素材として使う。
+- `embroidery_dog_source.jpg` は自動切り抜き検証用の元写真として残す。
+- `make_embroidery_variants.py` は `trace_sox_dog.png` が存在する場合、アルファを保持した `embroidery_dog_pixel_body.png` / `embroidery_dog_line_body.png` を追加生成する。

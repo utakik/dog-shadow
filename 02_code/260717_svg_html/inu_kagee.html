@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>犬の影絵 — sox dog hand tracking</title>
+<style>
+  body { margin:0; background:#0d0d12; color:#ddd; font-family:sans-serif; overflow:hidden; }
+  #stage { position:relative; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; }
+  #wrap { position:relative; }
+  canvas, svg#overlay { position:absolute; top:0; left:0; }
+  #panel { position:fixed; top:10px; left:10px; background:rgba(10,10,16,.78); padding:12px 14px;
+           border-radius:10px; font-size:12px; line-height:1.9; z-index:10; max-width:250px; }
+  #panel label { display:block; }
+  #panel input[type=range]{ width:130px; vertical-align:middle; }
+  #status { font-size:11px; opacity:.7; }
+  #toggleBtn { position:fixed; bottom:12px; left:12px; z-index:11; opacity:.6; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="wrap">
+  <canvas id="cam"></canvas>
+  <svg id="overlay" xmlns="http://www.w3.org/2000/svg">
+    <g id="dogRoot" opacity="0">
+      
+    <path id="耳" d="M1107.73,262.215C1164.84,173.575 1191.36,152.835 1226.54,131.512C1260.46,110.952 1300.82,91.109 1325.49,107.86C1343.47,120.066 1339.8,236.142 1327.08,302.353C1325.04,312.965 1289.63,423.704 1279.59,425.379C1269.38,427.079 1210.74,357.533 1186.56,333.099C1161.96,308.237 1123.44,292.526 1110.3,286.102C1094.94,278.596 1106.59,263.355 1107.73,262.215Z" style="fill:rgb(183,210,219);stroke:black;stroke-width:1.5px;"/>
+    <g id="上顎" transform="matrix(1.03139,0,0,1,-4.2703,-9.25719)">
+        <path d="M830.691,248.019C801.978,258.972 775.063,271.624 749.877,293.846C679.624,355.831 679.071,349.396 623.463,362.28C597.404,368.318 536.139,389.109 479.711,394.282C458.418,396.234 418.601,394.426 387.119,399.294C357.634,403.853 305.534,416.046 294.507,430.632C279.698,450.221 300.314,555.692 310.341,567.574C317.858,576.484 347.396,592.292 369.279,596.5C397.817,601.988 444.458,632.579 488.936,629.541C533.746,626.48 605.593,628.85 655.329,621.796C689.135,617.001 848.58,618.852 906.764,622.606C971.637,626.792 1171.99,725.686 1199.85,669.75C1256.36,556.28 1303.19,378.019 1176.37,291.423C1109.03,245.446 1067.4,225.903 1056.82,223.551C1018.33,214.997 949.747,230.62 938,231.403C926.79,232.15 861.557,236.244 830.691,248.019Z" style="fill:rgb(183,210,219);stroke:black;stroke-width:1.48px;"/>
+    </g>
+    <path id="耳内" d="M1180.31,330.637C1221.22,296.545 1181.95,244.24 1196.02,237.203C1202.94,233.744 1269.03,158.536 1256.75,224.038C1255.52,230.585 1252.26,248.008 1254.63,307.279C1254.68,308.61 1255.02,317.179 1264.82,320.444C1265.14,320.551 1265.62,321.999 1265.67,322.143" style="fill:none;stroke:black;stroke-width:20.64px;"/>
+    <path id="眼" d="M799.114,416.14C798.5,417.618 809.691,359.528 872.975,342.816C878.691,341.306 945.895,324.999 971.633,342.158C977.409,346.008 948.54,414.515 856.131,422.916C851.103,423.373 818.805,427.67 799.114,416.14Z" style="fill:none;stroke:black;stroke-width:12px;"/>
+    <path id="瞳" d="M848.851,420.178C856.025,362.783 870.974,352.835 873.125,350.024C883.567,366.722 921.456,403.25 904.48,410.525C900.525,412.22 875.132,425.343 848.851,420.178Z"/>
+    <g id="開-下顎グループ">
+        <path id="開-舌" d="M687.354,639.896C652.826,655.877 678.992,726.798 462.121,770.172C317.166,799.164 357.079,956.304 389.952,923.431C391.712,921.671 565.388,890.138 680.251,824.502C744.816,787.608 855.525,661.138 753.231,635.565C728.134,629.291 705.207,631.632 687.354,639.896Z" style="fill:rgb(217,37,57);stroke:black;stroke-width:4.07px;"/>
+        <path id="開-牙3" d="M363.848,933.711C363.519,933.924 344.539,899.029 343.906,884.481C343.736,880.573 342.735,857.535 353.254,836.496C359.484,824.036 356.059,811.369 389.398,791.628C442.913,759.939 381.153,842.859 411.832,896.944C429.931,928.85 381.716,931.367 363.848,933.711Z" style="fill:rgb(180,132,0);stroke:rgb(164,126,0);stroke-width:1.45px;"/>
+        <path id="開-牙4" d="M522.321,878.303C508.27,793.997 546.89,723.182 573.107,728.053C575.866,728.566 584.298,755.763 588.95,777.254C593.429,797.948 600.414,816.149 605.639,854.716C595.676,857.6 545.869,880.657 522.321,878.303Z" style="fill:rgb(180,132,0);stroke:rgb(164,126,0);stroke-width:1.45px;"/>
+        <g id="開-下顎" transform="matrix(1.03139,0,0,1,-9.67452,0)">
+            <path d="M962.059,622.791C912.008,620.708 843.523,636.17 802.442,671.938C757.589,710.989 739.962,777.691 722.98,798.09C691.947,835.365 588.79,859.699 558.206,871.78C528.388,883.559 407.943,922.664 360.527,933.671C355.003,934.954 357.544,953.573 358.04,961.684C358.118,962.968 351.861,963.304 350.168,967.381C348.334,979.574 349.094,1031.25 364.198,1038.16C383.818,1047.13 422.556,1053.88 447.925,1053.25C500.13,1051.94 554.414,1039.9 577.169,1032.68C622.698,1018.24 668.709,997.11 699.309,976.028C716.218,964.378 766.279,928.926 798.486,918.252C831.391,907.346 884.017,898.658 891.092,896.796C917.568,889.827 970.544,883.083 996.129,873.338C1021.53,863.665 1051.24,830.91 1059.73,793.614C1069.47,750.796 1026.26,625.463 962.059,622.791Z" style="fill:rgb(183,210,219);stroke:black;stroke-width:1.48px;"/>
+        </g>
+        <path id="開-咀嚼筋" d="M637.223,611.992C643.333,614.013 784.4,644.76 772.271,726.78C769.997,742.159 756.553,764.861 735.659,782.857C790.753,760.466 774.771,724.345 899.399,682.802C928.467,673.113 975.75,639.581 991.284,631.814C1024.75,615.082 891.563,595.086 841.507,585.075C823.934,581.56 682.207,574.53 642.153,602.029C638.987,604.202 630.598,609.8 637.223,611.992Z" style="fill:rgb(183,210,219);"/>
+        <path id="開-唇" d="M671.097,633.915C669.469,633.628 667.64,626.172 675.386,623.021C686.577,618.468 705.925,620.962 736.865,635.54C741.998,637.959 791.319,658.218 788.36,708.521C785.855,751.107 784.856,754.133 760.391,793.654C751.052,808.74 716.419,832.628 684.466,849.166C653.848,865.014 627.492,876.41 612.252,882.474C577.952,896.122 521.587,908.961 509.049,914.608C472.796,930.936 438.153,942.886 429.753,945.844C419.66,949.398 352.472,967.728 358.612,960.603C363.423,955.019 357.889,937.678 358.549,934.869C358.898,933.385 389.37,930.098 424.738,919.385C451.864,911.169 481.094,896.766 506.523,886.458C536.201,874.428 573.77,866.256 603.049,855.473C626.563,846.812 653.776,836.745 675.013,824.338C699.494,810.036 716.649,793.639 721.132,789.362C743.146,768.358 756.202,745.015 753.096,704.136C750.968,676.131 728.969,658.893 711.718,647.076C703.876,641.704 678.286,635.187 671.097,633.915Z" style="stroke:black;stroke-width:1.45px;"/>
+        <path id="開-髭1" d="M358.577,1011.81C365.212,1027.2 365.086,1047.09 373.699,1055.71C377.687,1059.69 383.241,1084.78 390.865,1082.29C394.918,1080.97 405.821,1062.08 421.23,1070.85C428.219,1074.83 452.992,1129.48 464.895,1089.83C465.611,1087.44 474.028,1095.64 478.286,1092.84C482.149,1090.31 486.916,1078.51 490.821,1078.26C503.164,1077.47 522.599,1119.48 538.955,1085.09C548.425,1065.19 561.859,1059.11 570.515,1072.42C571.796,1074.38 579.673,1076.85 584.684,1070.53C586.864,1067.77 583.744,1062.84 587.25,1056.33C622.33,1071.32 611.694,1032.81 629.968,1020.63C644.833,1010.72 652.402,1025.5 678.508,999.39C696.029,981.869 688.068,978.979 686.851,954.642C685.315,923.914 603.174,979.543 529.853,997.873C503.801,1004.39 504.06,1001.81 477.33,996.937C452.584,1016.49 447.289,996.321 417.604,1006.22C397.968,1012.76 374.549,1011.26 358.577,1011.81Z" style="fill:rgb(233,254,254);"/>
+        <path id="開-髭2" d="M679.98,947.761C680.147,949.127 683.687,974.168 690.103,988.193C693.034,994.6 696.059,1005.29 702.419,1006.35C707.796,1007.24 711.994,997.171 715.381,996.795C719.445,996.344 723.813,991.083 731.755,1004.98C732.852,1006.9 748.234,1069.92 764.842,1040.12C772.788,1025.86 777.714,1025.77 782.048,1031.01C783.36,1032.59 786.554,1036.5 789.202,1031.81C791.496,1027.74 792.793,1017.31 793.784,1013.85C794.384,1011.74 796.127,992.165 811.915,1023.74C814.283,1028.48 830.427,1022.89 831.699,1006.35C832.224,999.529 832.429,999.803 833.653,993.167C840.353,1000.1 845.266,1018.1 855.236,998.16C860.026,988.579 867.226,995.52 869.562,996.454C876.813,999.354 879.924,994.4 885.45,991.915C888.746,971.931 896.022,967.451 872.291,947.675C835.331,916.876 847.538,890.015 828.629,891.734C826.575,891.921 827.068,893.393 804.411,900.603C764.155,913.411 764.141,912.519 724.591,927.209C703.718,934.962 678.295,933.98 679.98,947.761Z" style="fill:rgb(233,254,254);"/>
+    </g>
+
+        <path id="開-髭3" d="M1356.98,218.832C1347.9,231.317 1316.34,318.193 1304.02,382.122C1288,465.237 1279.12,517.626 1244.92,609.493C1232.64,642.463 1211.95,699.85 1143.11,781.05C1119.93,808.401 1026.21,874.747 957.298,878.374C945.645,878.988 813.882,885.923 811.784,888.545C786.91,919.638 920.983,995.202 943.216,1011.37C946.161,1013.51 968.888,1022.62 991.9,1010.76C1020.98,1039.89 1024.63,991.911 1037.1,990.248C1062.56,986.853 1101.06,1054.77 1109.85,1001.98C1113.77,978.474 1108.65,1030.08 1131.76,1025.45C1157.36,1020.33 1150.12,988.086 1181.05,1003.55C1206.52,1016.28 1199.62,961.175 1228.77,977.731C1244.81,986.843 1259.4,991.885 1262.87,990.189C1265.4,965.796 1278.25,946.526 1278.82,921.707C1316.21,939.472 1293.28,903.282 1308.57,865.075C1313.07,853.814 1316.46,854.889 1364.08,862.859C1378.44,848.396 1380.93,846.868 1373.5,828.305C1363.44,803.149 1367.35,720.897 1397.75,766.5C1400.05,769.948 1430.23,783 1419.66,719.56C1411.74,672.039 1450.22,717.09 1461.12,708.607C1463.84,706.496 1500.08,629.33 1500.24,628.027C1512.13,532.906 1485.82,510.472 1531.53,502.853C1578.29,495.061 1562.53,476.342 1551.09,449.654C1525.96,391.025 1542.98,382.52 1547.96,380.026C1548.64,379.687 1547.96,380.026 1555.87,374.757C1554.04,339.593 1554.16,339.887 1559.85,305.313C1547.38,289.336 1544.57,289.875 1546.4,269.717C1548.35,248.286 1547.23,248.487 1556.57,229.818C1559.53,223.904 1572.71,112.369 1521.36,122.638C1513.95,124.121 1507.8,113.901 1438.43,131.244C1393.32,142.522 1361.11,213.147 1356.98,218.832Z" style="fill:rgb(233,254,254);"/>
+        <path id="開-牙1" d="M337.765,560.553C332.961,567.115 333.461,576.988 334.623,594.714C337.094,632.401 354.331,687.281 396.786,701.432C425.703,711.071 407.231,688.179 399.153,647.788C390.457,604.308 417.787,598.579 401.125,581.917C397.762,578.554 381.403,562.195 347.875,555.489C342.406,554.395 339.502,558.18 337.765,560.553Z" style="fill:rgb(179,132,0);"/>
+        <path id="開-牙2" d="M458.017,593.716C437.122,598.191 435.541,606.33 446.43,641.718C448.884,649.692 457.577,668.147 468.138,677.587C480.289,688.448 511.077,692.034 521.608,688.541C525.124,687.374 536.069,685.477 531.953,682.229C527.692,678.867 501.779,655.923 505.832,615.488C507.629,597.553 464.837,592.255 458.017,593.716Z" style="fill:rgb(179,132,0);"/>
+    <path id="開-下顎頭部繋ぎ" d="M1236.87,649.538C1239.82,664.31 1208.16,719.61 1154.53,777.122C1137.13,795.781 1050.15,861.41 1031,866.821C1027.57,780.618 991.983,778.157 964.775,696.535C951.342,656.236 952.655,655.971 951.675,650.089C944.324,605.985 968.369,601.04 1132.1,621.506C1132.24,621.523 1205.32,637.099 1225.55,642.867C1226.5,643.138 1236.07,645.582 1236.87,649.538Z" style="fill:rgb(183,210,219);"/>
+    <path id="鼻" d="M412.73,419.314C366.312,413.511 365.777,408.89 321.223,423.741C284.585,435.954 291.358,504.014 332.584,587.494C390.522,593.128 433.826,618.651 452.58,590.52C477.429,553.247 482.564,478.817 457.008,453.26C433.014,429.266 443.247,434.572 412.73,419.314Z" style="stroke:black;stroke-width:1.45px;"/>
+
+    </g>
+  </svg>
+</div></div>
+
+<div id="panel">
+  <b>犬の影絵 prototype</b><br>
+  <label><input type="checkbox" id="alwaysShow"> 常に表示(ジェスチャー判定を無視)</label>
+  <label><input type="checkbox" id="showLm" checked> ランドマーク表示</label>
+  <label><input type="checkbox" id="mirror" checked> ミラー(自撮り)</label>
+  <label>口の最大閉じ角 <input type="range" id="closeMax" min="0" max="40" value="26"> <span id="closeMaxV">26</span>°</label>
+  <label>顎ピボットX <input type="range" id="pivX" min="850" max="1200" value="1010"> <span id="pivXV">1010</span></label>
+  <label>顎ピボットY <input type="range" id="pivY" min="550" max="850" value="700"> <span id="pivYV">700</span></label>
+  <label>スムージング <input type="range" id="smooth" min="0" max="90" value="55"> <span id="smoothV">55</span>%</label>
+  <div id="status">カメラ起動中…</div>
+</div>
+<button id="toggleBtn" onclick="document.getElementById('panel').style.display = document.getElementById('panel').style.display==='none'?'block':'none'">⚙</button>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script>
+// ============ 対応点(SVG座標 → 手のランドマーク番号) ============
+// 手動オーバーレイに基づく: 眼→5, 鼻→12, 耳内→2
+const SRC = { eye:[888,376], nose:[383,500], ear:[1223,284] };
+const DST_IDS = { eye:5, nose:12, ear:2 };
+
+const video = document.createElement('video');
+const canvas = document.getElementById('cam');
+const ctx = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const dogRoot = document.getElementById('dogRoot');
+const jawGroup = document.getElementById('開-下顎グループ');
+const statusEl = document.getElementById('status');
+
+const $ = id => document.getElementById(id);
+['closeMax','pivX','pivY','smooth'].forEach(id=>{
+  $(id).addEventListener('input', ()=> $(id+'V').textContent = $(id).value);
+});
+
+let W=1280, H=720;
+let prev = null;          // スムージング用の前フレームランドマーク
+let dogOpacity = 0;
+
+// 3点対応からアフィン行列 [a,b,c,d,e,f] を解く (クラメル)
+function solveAffine(s, d){
+  const [[x1,y1],[x2,y2],[x3,y3]] = s;
+  const det = x1*(y2-y3) - y1*(x2-x3) + (x2*y3 - x3*y2);
+  if (Math.abs(det) < 1e-6) return null;
+  function solveRow(u1,u2,u3){
+    const A = (u1*(y2-y3) - y1*(u2-u3) + (u2*y3-u3*y2)) / det;
+    const C = (x1*(u2-u3) - u1*(x2-x3) + (x2*u3-x3*u2)) / det;
+    const E = (x1*(y2*u3-y3*u2) - y1*(x2*u3-x3*u2) + u1*(x2*y3-x3*y2)) / det;
+    return [A,C,E];
+  }
+  const [a,c,e] = solveRow(d[0][0], d[1][0], d[2][0]);
+  const [b,dd,f] = solveRow(d[0][1], d[1][1], d[2][1]);
+  return [a,b,c,dd,e,f];
+}
+
+const vlen = v => Math.hypot(v[0],v[1]);
+const sub = (p,q) => [p[0]-q[0], p[1]-q[1]];
+function angleBetween(v1,v2){
+  const c = (v1[0]*v2[0]+v1[1]*v2[1]) / (vlen(v1)*vlen(v2) + 1e-9);
+  return Math.acos(Math.min(1,Math.max(-1,c))) * 180/Math.PI;
+}
+
+function onResults(results){
+  ctx.save();
+  if ($('mirror').checked){ ctx.translate(W,0); ctx.scale(-1,1); }
+  ctx.drawImage(results.image, 0, 0, W, H);
+  ctx.restore();
+
+  let targetOpacity = 0;
+
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length){
+    // ピクセル座標へ(ミラー考慮)
+    const mir = $('mirror').checked;
+    let pts = results.multiHandLandmarks[0].map(p => [ (mir ? 1-p.x : p.x)*W, p.y*H ]);
+
+    // スムージング
+    const s = 1 - $('smooth').value/100;
+    if (prev){ pts = pts.map((p,i)=> [ prev[i][0]+(p[0]-prev[i][0])*s, prev[i][1]+(p[1]-prev[i][1])*s ]); }
+    prev = pts;
+
+    // ---- ジェスチャー判定: 親指が指と直交方向に立っている & 人差し指が伸びている ----
+    const idxDir = sub(pts[8], pts[5]);
+    const thumbDir = sub(pts[4], pts[2]);
+    const thumbAng = angleBetween(idxDir, thumbDir);
+    const idxExtended = vlen(sub(pts[8],pts[0])) > 1.12 * vlen(sub(pts[5],pts[0]));
+    const isDog = (thumbAng > 35 && thumbAng < 125 && idxExtended);
+    targetOpacity = ($('alwaysShow').checked || isDog) ? 1 : 0;
+
+    // ---- 口の開き: 人差し指方向と小指方向の開き角 ----
+    const pinkyDir = sub(pts[20], pts[17]);
+    const spread = angleBetween(idxDir, pinkyDir);          // 開いているほど大
+    const openness = Math.min(1, Math.max(0, (spread-10)/(42-10)));
+    const jawRot = (+$('closeMax').value) * (1 - openness);
+    jawGroup.setAttribute('transform',
+      `rotate(${jawRot.toFixed(2)}, ${$('pivX').value}, ${$('pivY').value})`);
+
+    // ---- アフィン変換で犬を手に貼り付け ----
+    const M = solveAffine(
+      [SRC.eye, SRC.nose, SRC.ear],
+      [pts[DST_IDS.eye], pts[DST_IDS.nose], pts[DST_IDS.ear]]
+    );
+    if (M) dogRoot.setAttribute('transform', `matrix(${M.map(v=>v.toFixed(5)).join(',')})`);
+
+    statusEl.textContent = `判定: ${isDog?'🐕 犬!':'—'} / 親指角 ${thumbAng.toFixed(0)}° / 開き ${(openness*100).toFixed(0)}%`;
+
+    // ランドマーク描画
+    if ($('showLm').checked){
+      ctx.strokeStyle='rgba(0,255,140,.8)'; ctx.lineWidth=2;
+      for (const [a,b] of HAND_CONNECTIONS){
+        ctx.beginPath(); ctx.moveTo(...pts[a]); ctx.lineTo(...pts[b]); ctx.stroke();
+      }
+      ctx.fillStyle='#ff66ff'; ctx.font='11px sans-serif';
+      pts.forEach((p,i)=>{ ctx.beginPath(); ctx.arc(p[0],p[1],3.5,0,7); ctx.fill(); ctx.fillText(i, p[0]+6, p[1]-4); });
+    }
+  } else {
+    prev = null;
+    statusEl.textContent = '手を探しています…';
+  }
+
+  // フェード
+  dogOpacity += (targetOpacity - dogOpacity) * 0.12;
+  dogRoot.setAttribute('opacity', dogOpacity.toFixed(3));
+}
+
+const hands = new Hands({locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.5, minTrackingConfidence:0.5 });
+hands.onResults(onResults);
+
+navigator.mediaDevices.getUserMedia({
+  video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:720} }
+}).then(stream=>{
+  video.srcObject = stream; video.play();
+  video.onloadedmetadata = () => {
+    W = video.videoWidth; H = video.videoHeight;
+    canvas.width=W; canvas.height=H;
+    overlay.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+    function layout(){
+      // 実際のカメラのアスペクト比(W/H)を保ったまま画面に収める
+      const fit = Math.min(innerWidth/W, innerHeight/H);
+      const wrap = document.getElementById('wrap');
+      wrap.style.width = (W*fit)+'px'; wrap.style.height = (H*fit)+'px';
+      canvas.style.width = (W*fit)+'px'; canvas.style.height = (H*fit)+'px';
+      overlay.style.width = (W*fit)+'px'; overlay.style.height = (H*fit)+'px';
+    }
+    layout();
+    window.addEventListener('resize', layout);
+    window.addEventListener('orientationchange', ()=> setTimeout(layout, 200));
+
+    const cam = new Camera(video, { onFrame: async()=>{ await hands.send({image:video}); }, width:W, height:H });
+    cam.start();
+    statusEl.textContent = `カメラOK (${W}x${H})。手をかざしてください`;
+  };
+}).catch(e=>{ statusEl.textContent = 'カメラエラー: '+e.message+'(https または localhost が必要です)'; });
+</script>
+</body>
+</html>
