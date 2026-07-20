@@ -14,12 +14,12 @@ dog-shadow/
 ├─ SKILL.md
 ├─ README.md
 ├─ requirements.txt
-├─ mode_png_puppet/
+├─ 02_code/mode_png_puppet/
 │  ├─ dog_overlay_live.py
 │  └─ assets/
 │     ├─ head.png
 │     └─ jaw.png
-└─ mode_skeleton_pixel/
+└─ 02_code/mode_skeleton_pixel/
    └─ dog_overlay_live_v0_6_stable.py
 ```
 
@@ -27,12 +27,12 @@ dog-shadow/
 
 ### PNG Puppet Mode
 
-Use `mode_png_puppet/dog_overlay_live.py` when the user wants the dog-head puppet controlled by hand motion.
+Use `02_code/mode_png_puppet/dog_overlay_live.py` when the user wants the dog-head puppet controlled by hand motion.
 
 This mode:
 
-- loads `mode_png_puppet/assets/head.png`
-- loads `mode_png_puppet/assets/jaw.png`
+- loads `02_code/mode_png_puppet/assets/head.png`
+- loads `02_code/mode_png_puppet/assets/jaw.png`
 - detects one hand with MediaPipe Hands
 - maps landmarks to head angle, horizontal flip, scale, and jaw opening
 - overlays the two RGBA PNG layers on the mirrored camera feed
@@ -40,7 +40,7 @@ This mode:
 Run it with:
 
 ```bash
-python3 mode_png_puppet/dog_overlay_live.py
+python3 02_code/mode_png_puppet/dog_overlay_live.py
 ```
 
 Controls:
@@ -51,7 +51,7 @@ Controls:
 
 ### Skeleton Pixel Mode
 
-Use `mode_skeleton_pixel/dog_overlay_live_v0_6_stable.py` when the user wants the PNG-free hand-mask, contour, and pixelization expression path.
+Use `02_code/mode_skeleton_pixel/dog_overlay_live_v0_6_stable.py` when the user wants the PNG-free hand-mask, contour, and pixelization expression path.
 
 This mode:
 
@@ -63,7 +63,7 @@ This mode:
 Run it with:
 
 ```bash
-python3 mode_skeleton_pixel/dog_overlay_live_v0_6_stable.py
+python3 02_code/mode_skeleton_pixel/dog_overlay_live_v0_6_stable.py
 ```
 
 Controls:

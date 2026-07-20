@@ -10,13 +10,13 @@ The repository is organized as two separate modes. Keep them separate: the PNG p
 
 PNG puppet mode overlays two transparent image parts on the camera feed:
 
-- `mode_png_puppet/assets/head.png`
-- `mode_png_puppet/assets/jaw.png`
+- `02_code/mode_png_puppet/assets/head.png`
+- `02_code/mode_png_puppet/assets/jaw.png`
 
 Run:
 
 ```bash
-python3 mode_png_puppet/dog_overlay_live.py
+python3 02_code/mode_png_puppet/dog_overlay_live.py
 ```
 
 Controls:
@@ -41,7 +41,7 @@ Skeleton pixel mode does not use PNG assets. It builds a hand mask from MediaPip
 Run:
 
 ```bash
-python3 mode_skeleton_pixel/dog_overlay_live_v0_6_stable.py
+python3 02_code/mode_skeleton_pixel/dog_overlay_live_v0_6_stable.py
 ```
 
 Controls:
