@@ -12,6 +12,10 @@ source/ contains original files, previous versions, screenshots, failed or unusa
 
 ## Experiments
 
+- [260927_surface_fur](260927_surface_fur/README.md)
+  - 面を毛・短い刺繍糸に置き換えたライブ版（textile=3）
+  - 2026-10-03に実行ファイルと作業ログを保存。Safariの調整値はブラウザ内に別保存。
+
 - 260717_open_mouth
   - first HTML/SVG dog puppet prototype
   - similarity transform test

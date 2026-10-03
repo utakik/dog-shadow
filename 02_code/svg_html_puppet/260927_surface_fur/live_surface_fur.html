@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>dog shadow — surface fur study</title>
+<style>
+  :root { color-scheme: dark; }
+  html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#000;
+              font-family: -apple-system, "Hiragino Sans", sans-serif; }
+  #cv { display:block; width:100vw; height:100vh; }
+  #hud { position:fixed; top:8px; left:8px; font-size:12px; line-height:1.5;
+         color:#0f0; background:rgba(0,0,0,.55); padding:6px 9px; border-radius:5px;
+         white-space:pre; pointer-events:none; }
+  #warn { position:fixed; top:8px; right:8px; font-size:13px; color:#ff5252;
+          background:rgba(0,0,0,.6); padding:6px 9px; border-radius:5px; white-space:pre; }
+  #drop { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+          background:rgba(0,0,0,.85); color:#fff; font-size:15px; text-align:center;
+          flex-direction:column; gap:14px; }
+  #drop.hidden { display:none; }
+  #help { position:fixed; inset:0; background:rgba(0,0,0,.88); color:#eee; font-size:13px;
+          padding:40px; line-height:1.9; display:none; white-space:pre; }
+  #help.on { display:block; }
+  button { font-size:14px; padding:8px 16px; }
+  #furPanel { position:fixed; bottom:12px; right:12px; padding:10px 14px;
+    background:rgba(0,0,0,.82); color:#eee; border-radius:8px; font-size:13px;
+    max-height:65vh; overflow:auto; max-width:280px; }
+  #furPanel label { display:block; margin:6px 0; }
+  #furPanel input[type=range] { width:120px; vertical-align:middle; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud"></div>
+<div id="warn" style="display:none"></div>
+<div id="furPanel">
+  <details open><summary style="cursor:pointer">面を毛に置き換える · 調整</summary>
+  <label><input id="furOn" type="checkbox" checked> 毛で描く (h) ／ OFFで元の塗り</label>
+  <label><input id="stitchOn" type="checkbox" checked> 短い刺繍糸で描く (e)</label>
+  <label><input id="posePreview" type="checkbox"> 基準姿勢で確認（カメラなし）</label>
+  <label>全体の密度 <input id="furDensity" type="range" min="0.3" max="4" step="0.1" value="1"> <output id="furDensityV">1</output></label>
+  <label>なびく強さ <input id="furStrength" type="range" min="0" max="2" step="0.1" value="0.8"> <output id="furStrengthV">0.8</output></label>
+  <label>毛色 <input type="color" id="furColor" value="#e8f4f2"></label>
+  <label>毛の自律揺れ <input id="idleSway" type="range" min="0" max="2" step="0.1" value="1"> <output id="idleSwayV">1</output></label>
+  <label>刺繍の密度 <input id="stitchDensity" type="range" min="0.5" max="3" step="0.1" value="1"> <output id="stitchDensityV">1</output></label>
+  <label>刺繍糸の長さ <input id="stitchLength" type="range" min="0.3" max="1.2" step="0.05" value="0.78"> <output id="stitchLengthV">0.78</output></label>
+  <label>刺繍糸の蠢き <input id="stitchWriggle" type="range" min="0" max="1" step="0.05" value="0.35"> <output id="stitchWriggleV">0.35</output></label>
+  <label>刺繍糸の反射 <input id="stitchGlint" type="range" min="0" max="1.5" step="0.05" value="0.72"> <output id="stitchGlintV">0.72</output></label>
+  <hr>
+  <label>調整エリア <select id="furRegion"></select></label>
+  <label>長さ <input id="areaLength" type="range" min="0.03" max="0.6" step="0.01"> <output id="areaLengthV"></output></label>
+  <label>方向 <input id="areaAngle" type="range" min="-90" max="100" step="1"> <output id="areaAngleV"></output>°</label>
+  <label>密度 <input id="areaDensity" type="range" min="0.1" max="4" step="0.1"> <output id="areaDensityV"></output></label>
+  <label>太さ <input id="areaWidth" type="range" min="0.002" max="0.03" step="0.001"> <output id="areaWidthV"></output></label>
+  <button id="furReset">スケッチ基準に戻す</button>
+  <p><small>方向0°＝後頭部側、＋＝顎側、−＝頭頂側。<br>手が大きく映るほど毛・刺繍を自動で増やします。<br>調整はこのブラウザに保存されます。</small></p>
+  </details>
+</div>
+
+<div id="drop">
+  <div><b>rig.json をここにドロップ</b></div>
+  <div style="opacity:.6">または</div>
+  <input type="file" id="pick" accept=".json">
+  <div style="opacity:.5;font-size:12px">読み込み後、カメラ許可を求めます</div>
+</div>
+
+<div id="help">キー割り当て
+
+  m   カメラ映像の表示 / 非表示
+  l   ランドマークの表示 / 非表示
+  n   ランドマーク番号の表示
+  g   背景色の巡回（黒 → 白 → グレー）
+  f   塗りの ON / OFF
+  v   頂点マーカーの ON / OFF
+  k   バインド先（a,b）への線を表示
+  d   DISPLAY_FLIP（表示のみ。計算には一切影響しない）
+  [ ] 線幅スケール −/＋
+  o   オブジェクトを1つずつ単独表示（0 で全表示に戻る）
+  ,   perp の符号を反転（エディタと左右が逆に出るとき）
+  h   体毛の ON / OFF（右下で調整）
+  e   刺繍糸の ON / OFF
+  ?   このヘルプ
+
+  未実装（意図的）: リグ本体のゲイン表・ばね / visible_when / SAM
+</div>
+
+<script type="module">
+import { FilesetResolver, HandLandmarker }
+  from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+import {SurfaceCoat, REST_POINTS, REGION_DEFAULTS} from './surface_fur.mjs?v=20260927-textile3';
+import {EmbroideryFill} from './embroidery_fill.mjs?v=20260927-textile3';
+
+// ---------- 設定 ----------
+const INPUT_FLIP   = false;   // Mac内蔵カメラ実測。計算に影響する
+let   DISPLAY_FLIP = false;   // 表示のみ
+
+const S = {
+  video:true, marks:false, nums:false, fill:true, verts:false, binds:false,
+  bg:0, strokeScale:1.0, perpSign:+1, solo:0
+};
+const BGS = ['#000000','#ffffff','#808080'];
+
+// ---------- 状態 ----------
+let rig=null, landmarker=null, video=null, running=false;
+let lastT=0, fps=0, lm=null, world=null, chir=0;
+let starting=false, lastVideoTime=-1, frameDt=1/60;
+const fur = new SurfaceCoat();
+const stitches = new EmbroideryFill();
+let furEnabled=true, stitchEnabled=true, posePreview=false;
+const FUR_KEY='dogShadow.surfaceCoat.v1';
+
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const hud=document.getElementById('hud'), warn=document.getElementById('warn');
+const dropEl=document.getElementById('drop'), helpEl=document.getElementById('help');
+const $=id=>document.getElementById(id);
+try {
+  const saved=JSON.parse(localStorage.getItem(FUR_KEY)||'null');
+  if(saved){
+    for(const [key,defaults] of Object.entries(REGION_DEFAULTS)){
+      const c=saved.regions?.[key];if(!c)continue;
+      for(const [field,min,max] of [['length',.03,.6],['angle',-90,100],['density',.1,4],['width',.002,.03]])
+        if(Number.isFinite(c[field]))fur.regions[key][field]=Math.max(min,Math.min(max,c[field]));
+    }
+    if(Number.isFinite(saved.density))fur.density=Math.max(.3,Math.min(4,saved.density));
+    if(Number.isFinite(saved.strength))fur.strength=Math.max(0,Math.min(2,saved.strength));
+    if(/^#[0-9a-f]{6}$/i.test(saved.color))fur.color=saved.color;
+    if(Number.isFinite(saved.idleSway))fur.idleSway=Math.max(0,Math.min(2,saved.idleSway));
+    if(Number.isFinite(saved.stitchDensity))stitches.density=Math.max(.5,Math.min(3,saved.stitchDensity));
+    if(Number.isFinite(saved.stitchLength))stitches.lengthScale=Math.max(.3,Math.min(1.2,saved.stitchLength));
+    if(Number.isFinite(saved.stitchWriggle))stitches.wriggle=Math.max(0,Math.min(1,saved.stitchWriggle));
+    if(Number.isFinite(saved.stitchGlint))stitches.glint=Math.max(0,Math.min(1.5,saved.stitchGlint));
+  }
+} catch(e){console.warn('毛の設定を復元できませんでした',e);}
+function saveCoat(){try{localStorage.setItem(FUR_KEY,JSON.stringify({regions:fur.regions,density:fur.density,strength:fur.strength,color:fur.color,idleSway:fur.idleSway,stitchDensity:stitches.density,stitchLength:stitches.lengthScale,stitchWriggle:stitches.wriggle,stitchGlint:stitches.glint}));}catch(e){console.warn('毛の設定を保存できませんでした',e);}}
+function buildFur(){if(rig)fur.build(rig);}
+function buildStitches(){if(rig)stitches.build(rig);}
+function resetFur(){fur.reset();stitches.reset();}
+$('furOn').onchange=e=>{furEnabled=e.target.checked;resetFur();};
+$('stitchOn').onchange=e=>{stitchEnabled=e.target.checked;stitches.reset();};
+$('posePreview').onchange=e=>{posePreview=e.target.checked;resetFur();if(!running){running=true;requestAnimationFrame(loop);}};
+for(const [key,cfg] of Object.entries(fur.regions)){
+  const option=document.createElement('option');option.value=key;option.textContent=cfg.label;$('furRegion').appendChild(option);
+}
+function syncArea(){
+  const cfg=fur.regions[$('furRegion').value];
+  for(const [id,key] of [['areaLength','length'],['areaAngle','angle'],['areaDensity','density'],['areaWidth','width']]){
+    $(id).value=cfg[key];$(id+'V').textContent=cfg[key];
+  }
+}
+$('furRegion').onchange=syncArea;
+for(const [id,key] of [['areaLength','length'],['areaAngle','angle'],['areaDensity','density'],['areaWidth','width']]){
+  $(id).oninput=e=>{fur.regions[$('furRegion').value][key]=+e.target.value;$(id+'V').textContent=e.target.value;if(key==='density')buildFur();saveCoat();};
+}
+for(const [id,key] of [['furDensity','density'],['furStrength','strength']]){
+  $(id).value=fur[key];$(id+'V').textContent=fur[key];
+  document.getElementById(id).oninput = e => {
+    fur[key]=Number(e.target.value);
+    document.getElementById(id+'V').textContent=e.target.value;
+    if(key==='density') buildFur();
+    saveCoat();
+  };
+}
+$('furColor').value=fur.color;
+$('furColor').oninput=e=>{fur.color=e.target.value;saveCoat();};
+for(const [id,obj,key] of [['idleSway',fur,'idleSway'],['stitchDensity',stitches,'density'],['stitchLength',stitches,'lengthScale'],['stitchWriggle',stitches,'wriggle'],['stitchGlint',stitches,'glint']]){
+  $(id).value=obj[key];$(id+'V').textContent=obj[key];
+  $(id).oninput=e=>{obj[key]=+e.target.value;$(id+'V').textContent=e.target.value;saveCoat();};
+}
+$('furReset').onclick=()=>{fur.regions=structuredClone(REGION_DEFAULTS);fur.density=1;fur.strength=.8;fur.color='#e8f4f2';fur.idleSway=1;
+  stitches.density=1;stitches.lengthScale=.78;stitches.wriggle=.35;stitches.glint=.72;
+  for(const [id,key] of [['furDensity','density'],['furStrength','strength']]){$(id).value=fur[key];$(id+'V').textContent=fur[key];}
+  for(const [id,obj,key] of [['idleSway',fur,'idleSway'],['stitchDensity',stitches,'density'],['stitchLength',stitches,'lengthScale'],['stitchWriggle',stitches,'wriggle'],['stitchGlint',stitches,'glint']]){$(id).value=obj[key];$(id+'V').textContent=obj[key];}
+  $('furColor').value=fur.color;syncArea();buildFur();saveCoat();};
+syncArea();
+
+// ---------- rig 読み込み ----------
+function loadRig(text){
+  rig=JSON.parse(text);
+  buildFur();
+  buildStitches();
+  dropEl.classList.add('hidden');
+  if(!running && !starting) start();
+}
+document.getElementById('pick').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(f) f.text().then(loadRig);
+});
+window.addEventListener('dragover', e=>e.preventDefault());
+window.addEventListener('drop', e=>{
+  e.preventDefault();
+  const f=e.dataTransfer.files[0]; if(f) f.text().then(loadRig);
+});
+// 同じフォルダに rig.json があれば自動で拾う
+fetch(`rig.json?reload=${Date.now()}`, {cache:'no-store'}).then(r=>r.ok?r.text():null).then(t=>{ if(t&&!rig) loadRig(t); }).catch(()=>{});
+
+// ---------- 起動 ----------
+async function start(){
+  starting=true;
+  try {
+  const fileset = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+  landmarker = await HandLandmarker.createFromOptions(fileset, {
+    baseOptions:{
+      modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+      delegate:"GPU"
+    },
+    runningMode:"VIDEO", numHands:1,
+    minHandDetectionConfidence:0.5, minHandPresenceConfidence:0.5, minTrackingConfidence:0.5
+  });
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video:{ width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:60} }, audio:false });
+  video=document.createElement('video');
+  video.srcObject=stream; video.playsInline=true; video.muted=true;
+  await video.play();
+  if(!running){running=true; requestAnimationFrame(loop);}
+  } catch(error){
+    hud.textContent='起動エラー: '+error.message;
+    dropEl.classList.remove('hidden');
+  } finally { starting=false; }
+}
+
+// ---------- 幾何 ----------
+// 位置 = a + u·(b−a) + v·perp(b−a)   ※エディタと同一式
+function vertPos(vt, P){
+  const A=P[vt.a], B=P[vt.b];
+  const ex=B.x-A.x, ey=B.y-A.y;
+  const px=-ey*S.perpSign, py=ex*S.perpSign;
+  return { x: A.x + vt.u*ex + vt.v*px,
+           y: A.y + vt.u*ey + vt.v*py };
+}
+function hexA(hex, a){
+  if(a===undefined||a===null||a>=1) return hex;
+  const n=parseInt(hex.slice(1),16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+// Surface hair generation and spring simulation live in surface_fur.mjs.
+
+// ---------- ループ ----------
+function loop(t){
+  if(!running) return;
+  const dt=t-lastT; lastT=t;
+  frameDt=Math.max(1/240,dt/1000);
+  if(dt>0) fps = fps*0.9 + (1000/dt)*0.1;
+
+  if(!posePreview && video?.readyState>=2 && landmarker && video.currentTime!==lastVideoTime){
+    lastVideoTime=video.currentTime;
+    const res = landmarker.detectForVideo(video, performance.now());
+    if(res.landmarks && res.landmarks.length){
+      lm    = res.landmarks[0];
+      world = res.worldLandmarks ? res.worldLandmarks[0] : null;
+    } else { lm=null; world=null; resetFur(); }
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function draw(){
+  const dpr=window.devicePixelRatio||1;
+  const W=Math.round(innerWidth*dpr), H=Math.round(innerHeight*dpr);
+  if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle=posePreview?'#353b41':BGS[S.bg]; ctx.fillRect(0,0,W,H);
+
+  if(!video && !posePreview) return;
+  const vw=posePreview?1280:video.videoWidth, vh=posePreview?900:video.videoHeight;
+  if(!vw) return;
+
+  // レターボックス（等方スケール = 正方ピクセル空間を維持）
+  const sc=Math.min(W/vw, H/vh);
+  const ox=(W-vw*sc)/2, oy=(H-vh*sc)/2;
+
+  ctx.save();
+  ctx.translate(ox,oy); ctx.scale(sc,sc);
+  if(DISPLAY_FLIP){ ctx.translate(vw,0); ctx.scale(-1,1); }   // 表示のみ
+
+  if(S.video && !posePreview){ ctx.globalAlpha=1; ctx.drawImage(video,0,0,vw,vh); }
+
+  if(lm || posePreview){
+    // 正規化 → 実ピクセル。ここでアスペクトが正しく戻る
+    const restPolys=posePreview&&rig?rig.objects.flatMap(o=>o.verts.map(v=>vertPos(v,REST_POINTS))):[];
+    const minX=Math.min(...restPolys.map(p=>p.x)),maxX=Math.max(...restPolys.map(p=>p.x));
+    const minY=Math.min(...restPolys.map(p=>p.y)),maxY=Math.max(...restPolys.map(p=>p.y));
+    const fit=restPolys.length?Math.min(1050/(maxX-minX+1),680/(maxY-minY+1)):1;
+    const P = posePreview?REST_POINTS.map(p=>({x:(p.x-(minX+maxX)/2)*fit+vw/2,y:(p.y-(minY+maxY)/2)*fit+vh/2})):
+      lm.map(p=>({ x:(INPUT_FLIP? (1-p.x):p.x)*vw, y:p.y*vh }));
+
+    // キラリティ（2D符号。正準 = 右手・手のひら = −1）
+    const c=(P[5].x-P[0].x)*(P[17].y-P[0].y)-(P[5].y-P[0].y)*(P[17].x-P[0].x);
+    chir = c<0 ? -1 : +1;
+
+    if(rig){
+      if(furEnabled)fur.prepare(P,frameDt,S.perpSign,S.solo);
+      if(stitchEnabled)stitches.prepare(P,frameDt,S.perpSign,S.solo);
+      drawRig(P);
+    }
+    if(S.marks) drawMarks(P);
+  }
+  ctx.restore();
+
+  hud.textContent =
+`fps ${fps.toFixed(1)}   video ${vw}x${vh}
+hand ${posePreview?'基準姿勢':lm?'ok':'—'}   chirality ${lm?(chir>0?'+1':'−1'):'—'}
+INPUT_FLIP ${INPUT_FLIP}   DISPLAY_FLIP ${DISPLAY_FLIP}   perp ${S.perpSign>0?'+':'−'}
+objects ${rig?rig.objects.length:0}${S.solo?`   solo ${S.solo}/${rig.objects.length}: ${rig.objects[S.solo-1].name}`:''}
+fur ${furEnabled?fur.count:'off'}   speed ${(fur.speed/Math.max(1,fur.count)).toFixed(2)} palms/s
+stitch ${stitchEnabled?stitches.count:'off'}   motion ${stitches.motion.toFixed(2)}
+[?] help`;
+
+  if(lm && !posePreview && chir>0){
+    warn.style.display='block';
+    warn.textContent='chirality +1\nリグは右手・手のひら（−1）前提です';
+  } else warn.style.display='none';
+}
+
+function drawRig(P){
+  const objs = rig.objects;
+  objs.forEach((o,i)=>{
+    if(o.visible===false) return;
+    if(S.solo && (i+1)!==S.solo) return;
+    if(!o.verts || o.verts.length<1) return;
+    const pts=o.verts.map(v=>vertPos(v,P));
+    const hairSurface=furEnabled && fur.isFurry(o);
+    const stitched=stitchEnabled && stitches.isStitched(o);
+    const replaceFill=stitched && stitches.replacesFill(o);
+    if(hairSurface)fur.drawObject(ctx,i);
+    if(stitched)stitches.drawObject(ctx,i);
+
+    // 線幅は手の大きさに追従（0-9 を基準長とする）
+    const palm=Math.hypot(P[9].x-P[0].x, P[9].y-P[0].y);
+    const w=(o.stroke?.width||2)*S.strokeScale*(palm/300);
+
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x,pts[0].y);
+    for(let k=1;k<pts.length;k++) ctx.lineTo(pts[k].x,pts[k].y);
+    if(o.closed) ctx.closePath();
+
+    if(!hairSurface && !replaceFill && S.fill && o.fill?.on && o.closed && pts.length>2){
+      ctx.fillStyle=hexA(o.fill.color, o.fill.opacity); ctx.fill();
+    }
+    if(!hairSurface && !replaceFill && o.stroke?.on){
+      ctx.lineWidth=w; ctx.lineJoin='round'; ctx.lineCap='round';
+      ctx.strokeStyle=hexA(o.stroke.color, o.stroke.opacity); ctx.stroke();
+    }
+    if(S.verts){
+      ctx.fillStyle='#0ff';
+      pts.forEach(p=>{ ctx.beginPath(); ctx.arc(p.x,p.y,w*1.2,0,7); ctx.fill(); });
+    }
+    if(S.binds){
+      ctx.strokeStyle='rgba(255,255,0,.35)'; ctx.lineWidth=w*0.4;
+      o.verts.forEach((v,k)=>{
+        ctx.beginPath();
+        ctx.moveTo(P[v.a].x,P[v.a].y); ctx.lineTo(pts[k].x,pts[k].y);
+        ctx.lineTo(P[v.b].x,P[v.b].y); ctx.stroke();
+      });
+    }
+  });
+}
+
+const BONES=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],
+             [0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
+function drawMarks(P){
+  const palm=Math.hypot(P[9].x-P[0].x,P[9].y-P[0].y);
+  ctx.strokeStyle='rgba(0,255,120,.7)'; ctx.lineWidth=palm/120;
+  BONES.forEach(([a,b])=>{ ctx.beginPath(); ctx.moveTo(P[a].x,P[a].y); ctx.lineTo(P[b].x,P[b].y); ctx.stroke(); });
+  ctx.fillStyle='#0f6';
+  P.forEach(p=>{ ctx.beginPath(); ctx.arc(p.x,p.y,palm/70,0,7); ctx.fill(); });
+  if(S.nums){
+    ctx.save();
+    const vw=posePreview?1280:video.videoWidth;
+    if(DISPLAY_FLIP){ ctx.translate(vw,0); ctx.scale(-1,1); }
+    ctx.fillStyle='#ff0'; ctx.font=`${palm/12}px monospace`;
+    P.forEach((p,i)=>{
+      const x = DISPLAY_FLIP ? (vw-p.x) : p.x;
+      ctx.fillText(i, x+palm/40, p.y-palm/40);
+    });
+    ctx.restore();
+  }
+}
+
+// ---------- キー ----------
+addEventListener('keydown', e=>{
+  if(e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLButtonElement) return;
+  const k=e.key;
+  if(k==='m') S.video=!S.video;
+  else if(k==='l') S.marks=!S.marks;
+  else if(k==='n') S.nums=!S.nums;
+  else if(k==='f') S.fill=!S.fill;
+  else if(k==='v') S.verts=!S.verts;
+  else if(k==='k') S.binds=!S.binds;
+  else if(k==='h'){ furEnabled=!furEnabled; document.getElementById('furOn').checked=furEnabled; resetFur(); }
+  else if(k==='e'){ stitchEnabled=!stitchEnabled; document.getElementById('stitchOn').checked=stitchEnabled; stitches.reset(); }
+  else if(k==='g') S.bg=(S.bg+1)%BGS.length;
+  else if(k==='d') DISPLAY_FLIP=!DISPLAY_FLIP;
+  else if(k==='[') S.strokeScale=Math.max(.1,S.strokeScale-.15);
+  else if(k===']') S.strokeScale+=.15;
+  else if(k===','){ S.perpSign*=-1; resetFur(); }
+  else if(k==='o') S.solo = rig ? (S.solo % rig.objects.length)+1 : 0;
+  else if(k==='0') S.solo=0;
+  else if(k==='?'||k==='/') helpEl.classList.toggle('on');
+  else return;
+  e.preventDefault();
+});
+</script>
+</body>
+</html>
